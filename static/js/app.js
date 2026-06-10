@@ -546,39 +546,447 @@ function renderInsights(data) {
 }
 
 // ============================================================
-// Monthly Progress Tracker (localStorage)
+// 30-Day Action Plan
 // ============================================================
 
-/** Save current result to monthly tracker */
-function saveToTracker() {
+function initActionPlan() {
+  const container = document.getElementById('action-plan-container');
+  if (!container) return;
+
   const stored = localStorage.getItem('ecotrace_result');
-  if (!stored) return;
+  const generateBtn = document.getElementById('btn-generate-plan');
+  const calculateBtn = document.getElementById('btn-calculate-first');
+  const statusText = document.getElementById('action-plan-status-text');
 
-  const result = JSON.parse(stored);
-  const now = new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  if (stored) {
+    // User has a result — show Generate button
+    if (generateBtn) generateBtn.style.display = 'inline-flex';
+    if (calculateBtn) calculateBtn.style.display = 'none';
+    if (statusText) statusText.textContent = 'Your footprint data is ready. Click below to generate your personalized 30-day plan!';
 
-  const entry = {
-    month: month,
-    total: result.total,
-    breakdown: result.breakdown,
-  };
-
-  // Load existing history
-  let history = JSON.parse(localStorage.getItem('ecotrace_history') || '[]');
-
-  // Replace if same month already logged, otherwise append
-  const existingIdx = history.findIndex(e => e.month === month);
-  if (existingIdx >= 0) {
-    history[existingIdx] = entry;
-  } else {
-    history.push(entry);
+    generateBtn?.addEventListener('click', () => fetchActionPlan(JSON.parse(stored)));
   }
 
-  // Keep last 12 months
-  history = history.slice(-12);
-  localStorage.setItem('ecotrace_history', JSON.stringify(history));
-  showToast('✅ Saved to monthly tracker!');
+  // Copy plan button
+  document.getElementById('btn-copy-plan')?.addEventListener('click', copyActionPlan);
+}
+
+/** Fetch action plan from /api/action-plan */
+async function fetchActionPlan(result) {
+  const emptyEl = document.getElementById('action-plan-empty');
+  const loadingEl = document.getElementById('action-plan-loading');
+  const contentEl = document.getElementById('action-plan-content');
+
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (loadingEl) loadingEl.style.display = 'block';
+
+  try {
+    const response = await fetch('/api/action-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(result),
+    });
+
+    if (!response.ok) throw new Error('Failed to generate plan');
+
+    const plan = await response.json();
+    localStorage.setItem('ecotrace_action_plan', JSON.stringify(plan));
+    renderActionPlan(plan);
+  } catch (error) {
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'block';
+    showToast('❌ Failed to generate action plan. Please try again.');
+  }
+}
+
+/** Render the 4-week action plan */
+function renderActionPlan(plan) {
+  const loadingEl = document.getElementById('action-plan-loading');
+  const contentEl = document.getElementById('action-plan-content');
+  const savingBanner = document.getElementById('saving-banner');
+  const ctasEl = document.getElementById('action-plan-ctas');
+
+  if (loadingEl) loadingEl.style.display = 'none';
+  if (contentEl) contentEl.style.display = 'block';
+  if (ctasEl) ctasEl.style.display = 'flex';
+
+  // Saving banner
+  if (savingBanner && plan.estimated_annual_saving_tonnes) {
+    document.getElementById('saving-amount').textContent = plan.estimated_annual_saving_tonnes;
+    savingBanner.style.display = 'flex';
+  }
+
+  // Build accordion
+  const weekIcons = ['🚀', '🔧', '🍃', '🏆'];
+  const weeksHtml = (plan.weeks || []).map((week, idx) => {
+    const actionsHtml = (week.actions || []).map(action => `
+      <div class="action-item">
+        <div class="action-day">${action.day_range}</div>
+        <div class="action-details">
+          <p class="action-text">${action.action}</p>
+          <div class="action-meta">
+            <span class="action-impact">🌱 ${action.impact}</span>
+            <span class="action-time">⏱️ ${action.time_needed}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    return `
+      <div class="accordion-card ${idx === 0 ? 'open' : ''}">
+        <button class="accordion-header" aria-expanded="${idx === 0}" data-week="${week.week}">
+          <span class="accordion-icon">${weekIcons[idx] || '📋'}</span>
+          <span class="accordion-title">Week ${week.week}: ${week.theme}</span>
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-body" ${idx === 0 ? '' : 'style="display: none;"'}>
+          ${actionsHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  contentEl.innerHTML = weeksHtml;
+
+  // Accordion toggle listeners
+  contentEl.querySelectorAll('.accordion-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const card = header.parentElement;
+      const body = card.querySelector('.accordion-body');
+      const isOpen = card.classList.contains('open');
+
+      card.classList.toggle('open');
+      header.setAttribute('aria-expanded', !isOpen);
+      body.style.display = isOpen ? 'none' : 'block';
+    });
+  });
+}
+
+/** Copy action plan text to clipboard */
+function copyActionPlan() {
+  const plan = JSON.parse(localStorage.getItem('ecotrace_action_plan') || '{}');
+  if (!plan.weeks) return;
+
+  let text = '🌱 My 30-Day Eco Action Plan — EcoTrace India\n\n';
+  if (plan.estimated_annual_saving_tonnes) {
+    text += `Estimated annual saving: ${plan.estimated_annual_saving_tonnes} tonnes CO₂e\n\n`;
+  }
+
+  plan.weeks.forEach(week => {
+    text += `=== Week ${week.week}: ${week.theme} ===\n`;
+    week.actions.forEach(action => {
+      text += `${action.day_range}: ${action.action}\n  Impact: ${action.impact} | Time: ${action.time_needed}\n`;
+    });
+    text += '\n';
+  });
+
+  text += 'Generated by EcoTrace India — ecotrace-india.onrender.com';
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('✅ Plan copied to clipboard!');
+  }).catch(() => {
+    showToast('❌ Could not copy. Try selecting the text manually.');
+  });
+}
+
+// ============================================================
+// AI Chat
+// ============================================================
+
+let chatHistory = [];
+
+function initChat() {
+  const container = document.getElementById('chat-container');
+  if (!container) return;
+
+  const form = document.getElementById('chat-form');
+  const input = document.getElementById('chat-input');
+
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const message = input.value.trim();
+    if (message) {
+      sendChatMessage(message);
+      input.value = '';
+    }
+  });
+
+  // Suggestion chips
+  document.querySelectorAll('.suggestion-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const message = chip.dataset.message;
+      if (message) {
+        sendChatMessage(message);
+        // Hide suggestions after first click
+        const suggestionsEl = document.getElementById('chat-suggestions');
+        if (suggestionsEl) suggestionsEl.style.display = 'none';
+      }
+    });
+  });
+}
+
+/** Send a message to /api/chat */
+async function sendChatMessage(message) {
+  const messagesEl = document.getElementById('chat-messages');
+  const sendBtn = document.getElementById('chat-send-btn');
+
+  // Render user message
+  renderChatMessage('user', message);
+  chatHistory.push({ role: 'user', text: message });
+
+  // Show typing indicator
+  const typingId = 'typing-' + Date.now();
+  messagesEl.insertAdjacentHTML('beforeend', `
+    <div class="chat-message bot-message" id="${typingId}">
+      <div class="message-avatar">🌱</div>
+      <div class="message-bubble typing-indicator">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  `);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  if (sendBtn) sendBtn.disabled = true;
+
+  // Get footprint data for context
+  const footprintData = JSON.parse(localStorage.getItem('ecotrace_result') || 'null');
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: message,
+        chat_history: chatHistory.slice(-10),
+        footprint_data: footprintData,
+        language: 'English',
+      }),
+    });
+
+    // Remove typing indicator
+    document.getElementById(typingId)?.remove();
+
+    if (!response.ok) throw new Error('Failed to get response');
+
+    const data = await response.json();
+    renderChatMessage('bot', data.response);
+    chatHistory.push({ role: 'bot', text: data.response });
+  } catch (error) {
+    document.getElementById(typingId)?.remove();
+    renderChatMessage('bot', "I'm having trouble connecting. Please try again in a moment! 🌱");
+  }
+
+  if (sendBtn) sendBtn.disabled = false;
+  document.getElementById('chat-input')?.focus();
+}
+
+/** Render a chat message bubble */
+function renderChatMessage(role, text) {
+  const messagesEl = document.getElementById('chat-messages');
+  if (!messagesEl) return;
+
+  const isBot = role === 'bot';
+  const avatar = isBot ? '🌱' : '👤';
+  const className = isBot ? 'bot-message' : 'user-message';
+
+  // Simple markdown-ish formatting for bot messages
+  let formattedText = text;
+  if (isBot) {
+    formattedText = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+  }
+
+  const messageHtml = `
+    <div class="chat-message ${className}">
+      <div class="message-avatar">${avatar}</div>
+      <div class="message-bubble">${formattedText}</div>
+    </div>
+  `;
+
+  messagesEl.insertAdjacentHTML('beforeend', messageHtml);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+// ============================================================
+// Monthly Progress Tracker
+// ============================================================
+
+function initTracker() {
+  const container = document.getElementById('tracker-container');
+  if (!container) return;
+
+  const history = JSON.parse(localStorage.getItem('ecotrace_history') || '[]');
+
+  if (history.length === 0) {
+    document.getElementById('tracker-empty').style.display = 'block';
+    document.getElementById('tracker-content').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('tracker-empty').style.display = 'none';
+  document.getElementById('tracker-content').style.display = 'block';
+
+  renderTrackerChange(history);
+  renderTrackerChart(history);
+  renderTrackerTable(history);
+
+  // Clear history button
+  document.getElementById('btn-clear-history')?.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all tracker history?')) {
+      localStorage.removeItem('ecotrace_history');
+      window.location.reload();
+    }
+  });
+}
+
+/** Render month-over-month change banner */
+function renderTrackerChange(history) {
+  const bannerEl = document.getElementById('tracker-change-banner');
+  const iconEl = document.getElementById('change-icon');
+  const textEl = document.getElementById('change-text');
+  if (!bannerEl || history.length < 2) {
+    if (textEl) textEl.textContent = `You have ${history.length} month(s) logged. Keep tracking to see your trend!`;
+    return;
+  }
+
+  const current = history[history.length - 1];
+  const previous = history[history.length - 2];
+  const change = current.total - previous.total;
+  const changePct = previous.total > 0 ? ((change / previous.total) * 100).toFixed(1) : 0;
+
+  if (change < 0) {
+    if (iconEl) iconEl.textContent = '🎉';
+    if (textEl) textEl.innerHTML = `Down <strong>${Math.abs(changePct)}%</strong> from last month! Your footprint decreased from ${previous.total.toFixed(2)}t to ${current.total.toFixed(2)}t.`;
+    bannerEl.className = 'tracker-change-banner change-improved';
+  } else if (change > 0) {
+    if (iconEl) iconEl.textContent = '📈';
+    if (textEl) textEl.innerHTML = `Up <strong>${changePct}%</strong> from last month. Your footprint went from ${previous.total.toFixed(2)}t to ${current.total.toFixed(2)}t.`;
+    bannerEl.className = 'tracker-change-banner change-increased';
+  } else {
+    if (iconEl) iconEl.textContent = '➡️';
+    if (textEl) textEl.textContent = `Steady at ${current.total.toFixed(2)} tonnes — same as last month.`;
+  }
+}
+
+/** Render Chart.js line chart */
+function renderTrackerChart(history) {
+  const canvas = document.getElementById('tracker-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const labels = history.map(e => {
+    const [year, month] = e.month.split('-');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  });
+
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Total Footprint (tonnes)',
+          data: history.map(e => e.total),
+          borderColor: '#43A047',
+          backgroundColor: 'rgba(67, 160, 71, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.3,
+          pointBackgroundColor: '#00C853',
+          pointBorderColor: '#152416',
+          pointBorderWidth: 2,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+        },
+        {
+          label: 'India Urban Avg (5.0t)',
+          data: history.map(() => 5.0),
+          borderColor: 'rgba(251, 140, 0, 0.5)',
+          borderWidth: 2,
+          borderDash: [8, 4],
+          fill: false,
+          pointRadius: 0,
+        },
+        {
+          label: '2050 Target (2.0t)',
+          data: history.map(() => 2.0),
+          borderColor: 'rgba(0, 200, 83, 0.5)',
+          borderWidth: 2,
+          borderDash: [8, 4],
+          fill: false,
+          pointRadius: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#A5D6A7',
+            font: { family: "'DM Sans', sans-serif" },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => ` ${context.dataset.label}: ${context.parsed.y.toFixed(2)}t`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#A5D6A7' },
+          grid: { color: 'rgba(67, 160, 71, 0.1)' },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#A5D6A7' },
+          grid: { color: 'rgba(67, 160, 71, 0.1)' },
+        },
+      },
+    },
+  });
+}
+
+/** Render history table */
+function renderTrackerTable(history) {
+  const tbody = document.getElementById('tracker-table-body');
+  if (!tbody) return;
+
+  tbody.innerHTML = history.map((entry, idx) => {
+    const [year, month] = entry.month.split('-');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthLabel = `${monthNames[parseInt(month) - 1]} ${year}`;
+
+    let changeHtml = '—';
+    if (idx > 0) {
+      const prev = history[idx - 1].total;
+      const diff = entry.total - prev;
+      const pct = prev > 0 ? ((diff / prev) * 100).toFixed(1) : 0;
+      if (diff < 0) {
+        changeHtml = `<span style="color: var(--eco-excellent);">↓ ${Math.abs(pct)}%</span>`;
+      } else if (diff > 0) {
+        changeHtml = `<span style="color: var(--eco-danger);">↑ ${pct}%</span>`;
+      } else {
+        changeHtml = `<span style="color: var(--text-muted);">= 0%</span>`;
+      }
+    }
+
+    const b = entry.breakdown || {};
+    return `
+      <tr>
+        <td>${monthLabel}</td>
+        <td><strong>${entry.total.toFixed(2)}</strong></td>
+        <td>${(b.energy || 0).toFixed(2)}</td>
+        <td>${(b.transport || 0).toFixed(2)}</td>
+        <td>${(b.diet || 0).toFixed(2)}</td>
+        <td>${(b.waste || 0).toFixed(2)}</td>
+        <td>${changeHtml}</td>
+      </tr>
+    `;
+  }).reverse().join('');
 }
 
 // ============================================================
@@ -592,6 +1000,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (document.getElementById('results-container')) {
     initResults();
+  }
+  if (document.getElementById('action-plan-container')) {
+    initActionPlan();
+  }
+  if (document.getElementById('chat-container')) {
+    initChat();
+  }
+  if (document.getElementById('tracker-container')) {
+    initTracker();
   }
 
   // Save to tracker button

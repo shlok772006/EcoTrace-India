@@ -7,6 +7,7 @@
   <meta name="description" content="Track your monthly carbon footprint over time and see your improvement trend.">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -26,19 +27,82 @@
     <ul class="navbar-nav" id="navbar-nav">
       <li><a href="/">Home</a></li>
       <li><a href="/calculator">Calculator</a></li>
+      <li><a href="/action-plan">Action Plan</a></li>
       <li><a href="/tracker" class="active">Tracker</a></li>
       <li><a href="/chat">Chat</a></li>
     </ul>
   </nav>
 
-  <main class="page-content">
+  <main class="page-content" id="tracker-container">
     <div class="container">
-      <div class="coming-soon">
-        <div class="coming-soon-icon">📈</div>
-        <h2>Monthly Progress Tracker</h2>
-        <p>Track your carbon footprint month by month and watch your improvement trend. Coming in the next update!</p>
-        <a href="/calculator" class="btn-primary">🧮 Calculate First →</a>
+
+      <!-- Header -->
+      <section class="section" style="text-align: center;">
+        <h1 class="section-title">📈 Monthly Progress Tracker</h1>
+        <p class="section-subtitle">Track your carbon footprint over time and watch your improvement</p>
+      </section>
+
+      <!-- Empty state -->
+      <div id="tracker-empty" style="display: none;">
+        <div class="coming-soon">
+          <div class="coming-soon-icon">📊</div>
+          <h2>No Data Yet</h2>
+          <p>Calculate your footprint and save it to the tracker to start seeing your progress over time.</p>
+          <a href="/calculator" class="btn-primary">🧮 Calculate Now →</a>
+        </div>
       </div>
+
+      <!-- Tracker content (shown when history exists) -->
+      <div id="tracker-content" style="display: none;">
+
+        <!-- Month-over-month change -->
+        <div class="tracker-change-banner" id="tracker-change-banner">
+          <span class="change-icon" id="change-icon">📊</span>
+          <span class="change-text" id="change-text">Tracking your progress...</span>
+        </div>
+
+        <!-- Chart -->
+        <section class="section">
+          <div class="tracker-chart-container">
+            <canvas id="tracker-chart" aria-label="Monthly carbon footprint trend chart"></canvas>
+          </div>
+        </section>
+
+        <!-- History Table -->
+        <section class="section">
+          <h2 class="section-title" style="font-size: var(--text-xl);">📋 History</h2>
+          <div class="tracker-table-wrapper">
+            <table class="tracker-table" id="tracker-table">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Total (t)</th>
+                  <th>Energy</th>
+                  <th>Transport</th>
+                  <th>Diet</th>
+                  <th>Waste</th>
+                  <th>Change</th>
+                </tr>
+              </thead>
+              <tbody id="tracker-table-body">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Actions -->
+        <div class="results-ctas">
+          <a href="/calculator" class="btn-primary">
+            🧮 Log New Month
+          </a>
+          <button class="btn-secondary btn-danger" id="btn-clear-history">
+            🗑️ Clear History
+          </button>
+        </div>
+
+      </div>
+
     </div>
   </main>
 
@@ -46,6 +110,7 @@
   <footer class="footer">
     <div class="container">
       <p>Built with ❤️ for a greener India | Prompt Wars Virtual 2025</p>
+      <p style="margin-top: 0.5rem;">Powered by Google Gemini API • Deployed on Render</p>
     </div>
   </footer>
 

@@ -32,14 +32,58 @@
     </ul>
   </nav>
 
-  <main class="page-content">
+  <main class="page-content" id="action-plan-container">
     <div class="container">
-      <div class="coming-soon">
-        <div class="coming-soon-icon">📅</div>
-        <h2>30-Day Action Plan</h2>
-        <p>Your personalized AI-powered action plan is coming in the next update. Calculate your footprint first to unlock this feature!</p>
-        <a href="/calculator" class="btn-primary">🧮 Calculate First →</a>
+
+      <!-- Header -->
+      <section class="section" style="text-align: center;">
+        <h1 class="section-title">📅 Your 30-Day Eco Action Plan</h1>
+        <p class="section-subtitle">A personalized, week-by-week plan to reduce your carbon footprint — powered by Gemini AI</p>
+      </section>
+
+      <!-- Estimated Saving Banner (hidden until plan loads) -->
+      <div class="saving-banner" id="saving-banner" style="display: none;">
+        <span class="saving-icon">🌳</span>
+        <span class="saving-text">Estimated annual saving: <strong id="saving-amount">–</strong> tonnes CO₂e</span>
       </div>
+
+      <!-- Empty state / Generate button -->
+      <div id="action-plan-empty" class="action-plan-empty">
+        <div class="coming-soon">
+          <div class="coming-soon-icon">📋</div>
+          <h2>Ready to Build Your Plan?</h2>
+          <p id="action-plan-status-text">Calculate your footprint first, then generate a personalized 30-day action plan.</p>
+          <button class="btn-primary" id="btn-generate-plan" style="display: none;">
+            📅 Generate My Action Plan
+          </button>
+          <a href="/calculator" class="btn-primary" id="btn-calculate-first">
+            🧮 Calculate First →
+          </a>
+        </div>
+      </div>
+
+      <!-- Loading state -->
+      <div id="action-plan-loading" style="display: none; text-align: center; padding: 3rem 0;">
+        <span class="loading-spinner"></span>
+        <p style="margin-top: 1rem; color: var(--text-secondary);">EcoBot is crafting your personalized plan...</p>
+      </div>
+
+      <!-- Plan content (rendered by JS) -->
+      <div id="action-plan-content" style="display: none;"></div>
+
+      <!-- Bottom CTAs (shown after plan loads) -->
+      <div id="action-plan-ctas" class="results-ctas" style="display: none;">
+        <button class="btn-primary" id="btn-copy-plan">
+          📋 Copy Plan
+        </button>
+        <a href="/results" class="btn-secondary">
+          ← Back to Results
+        </a>
+        <a href="/tracker" class="btn-secondary">
+          📈 Track Progress →
+        </a>
+      </div>
+
     </div>
   </main>
 
@@ -47,6 +91,7 @@
   <footer class="footer">
     <div class="container">
       <p>Built with ❤️ for a greener India | Prompt Wars Virtual 2025</p>
+      <p style="margin-top: 0.5rem;">Powered by Google Gemini API • Deployed on Render</p>
     </div>
   </footer>
 

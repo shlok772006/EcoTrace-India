@@ -1,7 +1,7 @@
 """
 app.py — EcoTrace India
 Flask application with all routes and API endpoints.
-Deployed on Google Cloud Run with gunicorn.
+Deployed on Render with gunicorn.
 """
 
 import datetime
@@ -21,7 +21,7 @@ from calculator import (
     calculate_tree_offset,
     get_benchmarks,
 )
-from gemini_client import get_insights
+from gemini_client import get_action_plan, get_chat_response, get_insights
 
 # ---------------------------------------------------------------------------
 # Environment & logging setup
@@ -216,12 +216,64 @@ def api_insights() -> tuple:
         return jsonify({"error": "Failed to generate insights. Please try again."}), 500
 
 
+@app.route("/api/action-plan", methods=["POST"])
+@limiter.limit("20 per minute")
+def api_action_plan() -> tuple:
+    """Generate a 30-day action plan.
+
+    Input:  Full footprint result from /api/calculate + language.
+    Output: Structured 4-week action plan from Gemini.
+    """
+    data = request.get_json(silent=True)
+    if not data or "total" not in data:
+        return jsonify({"error": "Missing footprint data. Calculate first."}), 400
+
+    language = _sanitize_string(data.get("language", "English"))
+
+    try:
+        plan = get_action_plan(data, language)
+        logger.info("Action plan generated for footprint %.2f tonnes", data["total"])
+        return jsonify(plan), 200
+    except Exception as e:
+        logger.error("Action plan error: %s", e, exc_info=True)
+        return jsonify({"error": "Failed to generate action plan. Please try again."}), 500
+
+
+@app.route("/api/chat", methods=["POST"])
+@limiter.limit("30 per minute")
+def api_chat() -> tuple:
+    """Chat with EcoBot.
+
+    Input:  message, chat_history (list), language, optional footprint_data.
+    Output: AI response text.
+    """
+    data = request.get_json(silent=True)
+    if not data or "message" not in data:
+        return jsonify({"error": "Message is required."}), 400
+
+    message = _sanitize_string(data["message"])
+    if not message or len(message) > 1000:
+        return jsonify({"error": "Message must be between 1 and 1000 characters."}), 400
+
+    chat_history = data.get("chat_history", [])
+    footprint_data = data.get("footprint_data", None)
+    language = _sanitize_string(data.get("language", "English"))
+
+    try:
+        response_text = get_chat_response(message, chat_history, footprint_data, language)
+        logger.info("Chat response generated")
+        return jsonify({"response": response_text}), 200
+    except Exception as e:
+        logger.error("Chat error: %s", e, exc_info=True)
+        return jsonify({"error": "Failed to get response. Please try again."}), 500
+
+
 @app.route("/health", methods=["GET"])
 def health_check() -> tuple:
-    """Health check endpoint for Cloud Run."""
+    """Health check endpoint."""
     return jsonify({
         "status": "healthy",
-        "services": ["gemini-api", "cloud-logging", "cloud-run"],
+        "services": ["gemini-api", "render"],
         "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
     }), 200
 

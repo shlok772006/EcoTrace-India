@@ -31,14 +31,51 @@
     </ul>
   </nav>
 
-  <main class="page-content">
+  <main class="page-content" id="chat-container">
     <div class="container">
-      <div class="coming-soon">
-        <div class="coming-soon-icon">💬</div>
-        <h2>AI Chat Assistant</h2>
-        <p>Chat with EcoBot about anything related to carbon footprint and sustainability in India. Coming in the next update!</p>
-        <a href="/calculator" class="btn-primary">🧮 Calculate First →</a>
+
+      <!-- Chat Header -->
+      <div class="chat-header">
+        <h1 class="chat-title">💬 Chat with EcoBot</h1>
+        <p class="chat-subtitle">Ask anything about carbon footprint, sustainability, or climate action in India</p>
       </div>
+
+      <!-- Chat Messages Area -->
+      <div class="chat-messages" id="chat-messages" role="log" aria-label="Chat messages" aria-live="polite">
+        <!-- Welcome message -->
+        <div class="chat-message bot-message">
+          <div class="message-avatar">🌱</div>
+          <div class="message-bubble">
+            <p>Hey there! I'm <strong>EcoBot</strong>, your sustainability buddy. 🌍</p>
+            <p>Ask me anything about carbon footprint, climate action, or eco-friendly living in India. Here are some ideas:</p>
+            <div class="chat-suggestions" id="chat-suggestions">
+              <button class="suggestion-chip" data-message="How can I reduce my electricity bill and carbon footprint?">⚡ Reduce electricity bill</button>
+              <button class="suggestion-chip" data-message="What are some eco-friendly transport options in India?">🚗 Eco transport in India</button>
+              <button class="suggestion-chip" data-message="How does my diet affect the environment?">🍽️ Diet & environment</button>
+              <button class="suggestion-chip" data-message="What government schemes can help me go green?">🏛️ Government schemes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Input -->
+      <div class="chat-input-container">
+        <form id="chat-form" class="chat-input-form">
+          <input
+            type="text"
+            id="chat-input"
+            class="chat-input"
+            placeholder="Ask EcoBot anything..."
+            aria-label="Type your message"
+            maxlength="1000"
+            autocomplete="off"
+          >
+          <button type="submit" class="chat-send-btn" id="chat-send-btn" aria-label="Send message">
+            ➤
+          </button>
+        </form>
+      </div>
+
     </div>
   </main>
 
@@ -46,6 +83,7 @@
   <footer class="footer">
     <div class="container">
       <p>Built with ❤️ for a greener India | Prompt Wars Virtual 2025</p>
+      <p style="margin-top: 0.5rem;">Powered by Google Gemini API • Deployed on Render</p>
     </div>
   </footer>
 
