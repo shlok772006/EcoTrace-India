@@ -93,9 +93,9 @@ who want to understand their environmental impact and take meaningful action.
 ## <Constraints>
 
 ### Technical Constraints
-- **Deployment:** Google Cloud Run exclusively.
+- **Deployment:** Render.
 - **Repository:** Public GitHub repo, single branch (main), under 10 MB.
-- **AI Model:** Gemini 1.5 Flash via Google Generative AI SDK.
+- **AI Model:** Gemini 2.5 Flash via google-genai SDK.
 - **API Key Security:** GEMINI_API_KEY must come from environment variable ONLY. Never hardcoded anywhere.
 - **Backend:** Python 3.11 with Flask.
 - **Frontend:** Vanilla HTML, CSS, JavaScript. No heavy frameworks.
@@ -103,8 +103,6 @@ who want to understand their environmental impact and take meaningful action.
 - **Dockerfile:** Must exist at root for Cloud Run compatibility.
 - **State:** Browser localStorage for progress tracking. No external database needed.
 - **Bundle Size:** All static assets under 5 MB total.
-- **Cold Start:** min-instances set to 1 on Cloud Run.
-- **Logging:** Google Cloud Logging via google-cloud-logging library.
 
 ### Content Constraints
 - All emission factors must be India-specific (defined in DATA_MODEL.md).

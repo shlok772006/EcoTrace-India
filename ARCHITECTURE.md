@@ -11,7 +11,7 @@ EcoTrace-India/
 ├── gemini_client.py              # All Gemini API calls and prompt building
 ├── requirements.txt              # Python dependencies (pinned versions)
 ├── Procfile                      # web: gunicorn --bind :8080 --workers 1 --threads 8 app:app
-├── Dockerfile                    # Container config for Cloud Run
+├── Dockerfile                    # Container config for Render
 ├── .env.example                  # Template — NEVER commit .env
 ├── .gitignore                    # Ignore .env, venv, __pycache__
 ├── test_app.py                   # pytest unit tests
@@ -57,7 +57,7 @@ EcoTrace-India/
                            │ HTTPS REST API calls
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│            GOOGLE CLOUD RUN (Flask + Gunicorn)              │
+│                      RENDER (Flask + Gunicorn)                      │
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │                   app.py (Flask)                     │  │
@@ -92,16 +92,12 @@ EcoTrace-India/
 │  │  - Reads GEMINI_API_KEY from environment variable     │ │
 │  └──────────────┬────────────────────────────────────────┘ │
 │                 │                                           │
-│  ┌──────────────┴────────────────────────────────────────┐ │
-│  │              Google Cloud Logging                     │ │
-│  │  All logs → GCP Cloud Logging dashboard               │ │
-│  └───────────────────────────────────────────────────────┘ │
 └──────────────────────────┬──────────────────────────────────┘
                            │ HTTPS
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│               GOOGLE GEMINI 1.5 FLASH API                   │
-│  Model: gemini-1.5-flash                                    │
+│               GOOGLE GEMINI 2.5 FLASH API                   │
+│  Model: gemini-2.5-flash                                    │
 │  Auth: GEMINI_API_KEY (environment variable only)           │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -178,8 +174,11 @@ EcoTrace-India/
 ```json
 {
   "status": "healthy",
-  "services": ["gemini-api", "cloud-logging", "cloud-run"],
-  "timestamp": "2025-05-01T10:00:00Z"
+  "services": {
+    "gemini-api": "healthy",
+    "render": "healthy"
+  },
+  "timestamp": "2026-06-10T19:29:50Z"
 }
 ```
 
@@ -189,10 +188,7 @@ EcoTrace-India/
 
 | Service | Role |
 |---|---|
-| Gemini 1.5 Flash API | All AI: insights, action plans, chat |
-| Google Cloud Run | App hosting and serving |
-| Google Cloud Logging | Structured application logging |
-| Google Cloud Build | Container build during deployment |
+| Gemini 2.5 Flash API | All AI: insights, action plans, chat |
 
 ---
 
@@ -201,8 +197,7 @@ EcoTrace-India/
 | Variable | Description | Required |
 |---|---|---|
 | `GEMINI_API_KEY` | Google Gemini API key | Yes |
-| `GOOGLE_CLOUD_PROJECT` | GCP Project ID for Cloud Logging | Yes |
-| `PORT` | Port (auto-set by Cloud Run to 8080) | Auto |
+| `PYTHON_VERSION` | Set to 3.11.0 in Render | Yes |
 
 ---
 
@@ -210,6 +205,6 @@ EcoTrace-India/
 - GEMINI_API_KEY never in source code — environment variable only
 - All user inputs sanitized with bleach before processing
 - Rate limiting: /api/insights 20 req/min, /api/chat 30 req/min
-- Flask runs behind Cloud Run HTTPS termination
+- Flask runs behind Render HTTPS termination
 - Non-root user in Docker container
 - No user data stored server-side (privacy by design)

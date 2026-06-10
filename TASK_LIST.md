@@ -28,7 +28,7 @@ Critical rules:
 - Add type hints to all Python functions
 - Do not change anything outside the current sprint's task list
 
-Current sprint: [REPLACE WITH: SPRINT 1 / SPRINT 2 / SPRINT 3]
+Current sprint: SPRINT 3
 Today's tasks: [PASTE TASKS FROM CURRENT SPRINT BELOW]
 ```
 
@@ -95,13 +95,12 @@ Today's tasks: [PASTE TASKS FROM CURRENT SPRINT BELOW]
       how to run locally, how to deploy, prompt strategy summary
 
 ### Phase 1E — Deploy
-- [ ] Push all code to GitHub (main branch only)
-- [ ] Open shell.cloud.google.com
-- [ ] Clone repo: `git clone https://github.com/shlok772006/EcoTrace-India.git`
-- [ ] Navigate: `cd EcoTrace-India`
-- [ ] Verify Procfile exists: `cat Procfile`
-- [ ] Deploy: `gcloud run deploy ecotrace-india --source . --region asia-south1 --allow-unauthenticated --set-env-vars GEMINI_API_KEY=YOUR_KEY,GOOGLE_CLOUD_PROJECT=new-project-shlok --min-instances 1`
-- [ ] Test live URL in incognito
+- [x] Push all code to GitHub (main branch only)
+- [x] Create a new Web Service on Render
+- [x] Connect GitHub repository
+- [x] Add Environment Variables: GEMINI_API_KEY and PYTHON_VERSION=3.11.0
+- [x] Trigger Deploy
+- [x] Test live URL in incognito
 
 ### Phase 1F — Submit
 - [ ] Write LinkedIn Post 1 (tools, approach, what you built)
@@ -143,13 +142,10 @@ Today's tasks: [PASTE TASKS FROM CURRENT SPRINT BELOW]
 - [ ] Run through accessibility checklist from DESIGN.md
 
 ### Phase 2F — Deploy + Submit
-- [ ] Push to GitHub
-- [ ] Pull and redeploy in Cloud Shell:
-  `cd EcoTrace-India && git pull origin main`
-  `gcloud run deploy ecotrace-india --source . --region asia-south1 --allow-unauthenticated --set-env-vars GEMINI_API_KEY=YOUR_KEY,GOOGLE_CLOUD_PROJECT=new-project-shlok --min-instances 1`
-- [ ] Test all new features in incognito
-- [ ] Write LinkedIn Post 2
-- [ ] Submit Attempt 2
+- [x] Push to GitHub (Render auto-deploys)
+- [x] Test all new features in incognito
+- [x] Write LinkedIn Post 2
+- [x] Submit Attempt 2
 
 ---
 
@@ -159,31 +155,31 @@ Today's tasks: [PASTE TASKS FROM CURRENT SPRINT BELOW]
 **Target score:** 95%+
 
 ### Phase 3A — Eco Badge Feature
-- [ ] Shareable Eco Score card on results page
-- [ ] Confetti animation on A+ or A grade
-- [ ] Badge shows: grade, total tonnes, top tip, India rank
+- [x] Shareable Eco Score card on results page
+- [x] Confetti animation on A+ or A grade
+- [x] Badge shows: grade, total tonnes, top tip, India rank
 
 ### Phase 3B — Performance & Security
-- [ ] Verify no API keys anywhere in source: `grep -r "AIza" . --exclude-dir=venv`
-- [ ] Add Content Security Policy headers to Flask responses
-- [ ] Add request ID logging for traceability
-- [ ] Verify rate limiting is working
+- [x] Verify no API keys anywhere in source: `grep -r "AIza" . --exclude-dir=venv`
+- [x] Add Content Security Policy headers to Flask responses
+- [x] Add request ID logging for traceability
+- [x] Verify rate limiting is working
 
 ### Phase 3C — Testing
-- [ ] Expand test_app.py to cover all edge cases:
-  - [ ] Zero values in calculator
-  - [ ] Maximum values in calculator
-  - [ ] Invalid diet type
-  - [ ] Missing required fields
-  - [ ] Oversized inputs (XSS attempts)
-- [ ] Run pytest and make sure all tests pass
+- [x] Expand test_app.py to cover all edge cases:
+  - [x] Zero values in calculator
+  - [x] Maximum values in calculator
+  - [x] Invalid diet type
+  - [x] Missing required fields
+  - [x] Oversized inputs (XSS attempts)
+- [x] Run pytest and make sure all tests pass
 
 ### Phase 3D — Accessibility Audit
-- [ ] Add aria-labels to all form inputs
-- [ ] Verify keyboard navigation on all pages
-- [ ] Check color contrast ratios
-- [ ] Test with browser accessibility tools
-- [ ] Add skip-to-main-content link
+- [x] Add aria-labels to all form inputs
+- [x] Verify keyboard navigation on all pages
+- [x] Check color contrast ratios
+- [x] Test with browser accessibility tools
+- [x] Add skip-to-main-content link
 
 ### Phase 3E — Final Documentation
 - [ ] Update README with:
@@ -228,8 +224,9 @@ Today's tasks: [PASTE TASKS FROM CURRENT SPRINT BELOW]
 
 ---
 
-## Quick Deploy Command (Cloud Shell — copy-paste ready)
+## Quick Deploy Command
 
 ```bash
-cd ~/EcoTrace-India && git pull origin main && gcloud run deploy ecotrace-india --source . --region asia-south1 --allow-unauthenticated --set-env-vars GEMINI_API_KEY=YOUR_KEY_HERE,GOOGLE_CLOUD_PROJECT=new-project-shlok --min-instances 1
+git push origin main
+# (Render automatically redeploys on push)
 ```

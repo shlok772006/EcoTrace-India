@@ -7,6 +7,7 @@ Deployed on Render with gunicorn.
 import datetime
 import logging
 import os
+import uuid
 from typing import Any
 
 import bleach
@@ -39,6 +40,31 @@ logger.info("Application starting — using standard Python logging")
 # Eagerly load emission factors so they are ready before the first request
 load_emission_factors()
 logger.info("Emission factors loaded")
+
+# ---------------------------------------------------------------------------
+# Security & Performance Hooks
+# ---------------------------------------------------------------------------
+
+@app.before_request
+def add_request_id():
+    """Add a unique ID to each request for traceability."""
+    request.environ['REQUEST_ID'] = str(uuid.uuid4())
+
+@app.after_request
+def add_security_headers(response):
+    """Inject Content Security Policy and other security headers."""
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self';"
+    )
+    response.headers['Content-Security-Policy'] = csp
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    return response
 
 # ---------------------------------------------------------------------------
 # Rate limiting

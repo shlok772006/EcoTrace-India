@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+  <a href="#results-container" class="skip-link">Skip to main content</a>
 
   <!-- Confetti canvas (for A+ / A grades) -->
   <canvas id="confetti-canvas"></canvas>
@@ -40,17 +41,28 @@
 
       <!-- Eco Score Badge -->
       <section class="section" id="eco-score-section">
-        <div class="eco-badge">
-          <div class="eco-badge-circle" id="eco-circle">
-            <span class="eco-badge-grade" id="eco-grade">–</span>
+        <div class="eco-badge-card card" id="eco-badge-card" style="text-align: center; max-width: 400px; margin: 0 auto;">
+          <h3 style="margin-bottom: 1rem; font-family: 'Syne', sans-serif;">My Eco Score</h3>
+          <div class="eco-badge">
+            <div class="eco-badge-circle" id="eco-circle">
+              <span class="eco-badge-grade" id="eco-grade">–</span>
+            </div>
+            <span class="eco-badge-label" id="eco-label">Calculating...</span>
           </div>
-          <span class="eco-badge-label" id="eco-label">Calculating...</span>
-        </div>
 
-        <!-- Total Footprint -->
-        <div class="footprint-total">
-          <div class="footprint-number" id="footprint-number">0.00</div>
-          <div class="footprint-unit">tonnes CO₂e per year</div>
+          <!-- Total Footprint -->
+          <div class="footprint-total" style="margin-top: 1rem;">
+            <div class="footprint-number" id="footprint-number">0.00</div>
+            <div class="footprint-unit">tonnes CO₂e per year</div>
+          </div>
+          
+          <div id="badge-top-tip" style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary); font-style: italic;">
+            <!-- Top tip populated by JS -->
+          </div>
+
+          <button class="btn-primary" id="btn-share-badge" style="margin-top: 1.5rem; width: 100%;">
+            📤 Share My Score
+          </button>
         </div>
       </section>
 

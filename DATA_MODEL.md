@@ -130,6 +130,13 @@ def calculate_footprint(user_data: dict) -> dict:
 
     grand_total = energy_total + transport_total + diet_total + waste_total
 
+    category_totals = {
+        "energy": energy_total,
+        "transport": transport_total,
+        "diet": diet_total,
+        "waste": waste_total,
+    }
+
     return {
         "total": round(grand_total, 2),
         "breakdown": {
@@ -138,10 +145,7 @@ def calculate_footprint(user_data: dict) -> dict:
             "diet": round(diet_total, 2),
             "waste": round(waste_total, 2),
         },
-        "largest_category": max(
-            ["energy", "transport", "diet", "waste"],
-            key=lambda x: locals()[f"{x}_total"]
-        )
+        "largest_category": max(category_totals, key=lambda k: category_totals[k])
     }
 ```
 

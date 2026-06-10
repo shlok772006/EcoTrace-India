@@ -259,6 +259,31 @@ function initResults() {
   const result = JSON.parse(stored);
   renderResults(result);
   fetchInsights(result);
+
+  const btnShare = document.getElementById('btn-share-badge');
+  if (btnShare) {
+    btnShare.addEventListener('click', () => shareScore(result));
+  }
+}
+
+/** Share the user's score */
+function shareScore(result) {
+  const grade = result.eco_score.grade;
+  const tonnes = result.total.toFixed(2);
+  const text = `🌱 I just checked my carbon footprint on EcoTrace India!\n\nMy Eco Score: ${grade}\nMy Footprint: ${tonnes} tonnes CO₂e/year.\n\nFind out your score and get an AI action plan at EcoTrace India! 🌍`;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: 'My EcoTrace Score',
+      text: text,
+    }).catch(console.error);
+  } else {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('✅ Score copied to clipboard!');
+    }).catch(() => {
+      alert('Could not copy to clipboard. Please copy manually:\n\n' + text);
+    });
+  }
 }
 
 /** Render all result sections */
@@ -541,6 +566,14 @@ function renderInsights(data) {
     if (msgEl) {
       msgEl.textContent = data.motivational_message;
       msgEl.style.display = 'block';
+    }
+  }
+
+  // Populate top tip in Eco Badge
+  if (data.insights && data.insights.length > 0) {
+    const topTipEl = document.getElementById('badge-top-tip');
+    if (topTipEl) {
+      topTipEl.textContent = `💡 Top Tip: ${data.insights[0].tip}`;
     }
   }
 }

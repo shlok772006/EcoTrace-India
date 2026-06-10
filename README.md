@@ -1,7 +1,7 @@
 # EcoTrace India 🌱
 ### AI-Powered Carbon Footprint Awareness Platform for India
 
-> Built for **Prompt Wars Virtual – Challenge 3** | Powered by **Google Gemini API** | Deployed on **Google Cloud Run**
+> Built for **Prompt Wars Virtual – Challenge 3** | Powered by **Google Gemini API** | Deployed on **Render**
 
 ---
 
@@ -12,7 +12,7 @@ carbon footprint through simple inputs, India-specific calculations, and
 personalized AI-powered insights. Built specifically for Indian users with
 India's emission factors, benchmarks, and lifestyle context.
 
-**Live Demo:** `[YOUR CLOUD RUN URL HERE]`
+**Live Demo:** `[YOUR RENDER URL HERE]`
 **GitHub:** `https://github.com/shlok772006/EcoTrace-India`
 
 ---
@@ -50,10 +50,7 @@ EcoTrace India addresses this by:
 
 | Service | How It's Used |
 |---|---|
-| **Gemini 1.5 Flash API** | Powers AI insights, action plans, chat, and motivational messages |
-| **Google Cloud Run** | Hosts and serves the entire application |
-| **Google Cloud Logging** | Structured application logging and monitoring |
-| **Google Cloud Build** | Builds Docker container on each deployment |
+| **Gemini 2.5 Flash API** | Powers AI insights, action plans, chat, and motivational messages |
 
 ---
 
@@ -78,7 +75,7 @@ EcoTrace-India/
 ├── calculator.py       # Pure calculation logic with India emission factors
 ├── gemini_client.py    # Gemini API integration and prompt management
 ├── requirements.txt    # Python dependencies
-├── Procfile            # Cloud Run process definition
+├── Procfile            # Render process definition
 ├── Dockerfile          # Container configuration
 ├── static/             # CSS and JavaScript
 ├── templates/          # HTML pages
@@ -115,20 +112,17 @@ Visit `http://localhost:5000`
 
 ---
 
-## Deploying to Google Cloud Run
+## Deploying to Render
 
-```bash
-# In Google Cloud Shell (shell.cloud.google.com)
-git clone https://github.com/shlok772006/EcoTrace-India.git
-cd EcoTrace-India
+Deploying to Render is fully automated from GitHub:
 
-gcloud run deploy ecotrace-india \
-  --source . \
-  --region asia-south1 \
-  --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=your_key_here,GOOGLE_CLOUD_PROJECT=your_project_id \
-  --min-instances 1
-```
+1. Push your code to a public GitHub repository.
+2. Sign up on [Render](https://render.com) and create a new **Web Service**.
+3. Connect your GitHub repository.
+4. Set the following Environment Variables in the Render dashboard:
+   - `GEMINI_API_KEY`: your Gemini API key
+   - `PYTHON_VERSION`: `3.11.0` (required for compatibility)
+5. Render will automatically detect the `Dockerfile` and `Procfile` and deploy your app.
 
 ---
 
@@ -145,13 +139,12 @@ All Gemini prompts are documented in `PROMPT_STRATEGY.md`. Key principles:
 ## Architecture
 
 ```
-User Browser → Flask on Cloud Run → Gemini 1.5 Flash API
+User Browser → Flask on Render → Gemini 2.5 Flash API
                      ↓
               calculator.py (India emission factors)
               gemini_client.py (prompt management)
-              Google Cloud Logging (monitoring)
 ```
 
 ---
 
-*Built with ❤️ for a greener India | Prompt Wars Virtual 2025*
+*Built with ❤️ for a greener India | Prompt Wars Virtual 2026*
