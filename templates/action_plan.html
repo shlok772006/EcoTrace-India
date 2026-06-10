@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>30-Day Action Plan — EcoTrace India</title>
+  <meta name="description" content="Get a personalized 30-day carbon reduction action plan powered by Google Gemini AI.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+</head>
+<body>
+
+  <!-- Tricolor stripe -->
+  <div class="tricolor-stripe">
+    <span class="saffron"></span>
+    <span class="white"></span>
+    <span class="green"></span>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <a href="/" class="navbar-logo">
+      <span class="leaf">🌱</span>EcoTrace
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+    <ul class="navbar-nav" id="navbar-nav">
+      <li><a href="/">Home</a></li>
+      <li><a href="/calculator">Calculator</a></li>
+      <li><a href="/action-plan" class="active">Action Plan</a></li>
+      <li><a href="/tracker">Tracker</a></li>
+      <li><a href="/chat">Chat</a></li>
+    </ul>
+  </nav>
+
+  <main class="page-content">
+    <div class="container">
+      <div class="coming-soon">
+        <div class="coming-soon-icon">📅</div>
+        <h2>30-Day Action Plan</h2>
+        <p>Your personalized AI-powered action plan is coming in the next update. Calculate your footprint first to unlock this feature!</p>
+        <a href="/calculator" class="btn-primary">🧮 Calculate First →</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>Built with ❤️ for a greener India | Prompt Wars Virtual 2025</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

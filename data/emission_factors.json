@@ -1,0 +1,43 @@
+{
+  "energy": {
+    "electricity_kwh": 0.75,
+    "lpg_per_cylinder": 37.68,
+    "png_per_scm": 2.0
+  },
+  "transport": {
+    "petrol_car_per_km": 0.171,
+    "diesel_car_per_km": 0.141,
+    "two_wheeler_per_km": 0.089,
+    "auto_rickshaw_per_km": 0.072,
+    "bus_per_km": 0.089,
+    "metro_per_km": 0.031,
+    "train_per_km": 0.011,
+    "domestic_flight_per_km": 0.255,
+    "cab_per_km": 0.171
+  },
+  "diet": {
+    "vegan": 1500,
+    "vegetarian": 1700,
+    "non_vegetarian": 2500,
+    "heavy_meat": 3300
+  },
+  "waste": {
+    "landfill_per_kg": 0.5,
+    "recycled_reduction": 0.3,
+    "composting_reduction": 0.4
+  },
+  "benchmarks": {
+    "india_national_average": 2.19,
+    "india_urban_average": 5.0,
+    "india_rural_average": 1.2,
+    "global_average": 4.7,
+    "global_target_2050": 2.0,
+    "usa_average": 14.4,
+    "china_average": 8.0,
+    "eu_average": 6.4
+  },
+  "offsets": {
+    "tree_absorption_per_year": 0.025,
+    "solar_panel_saving_per_kw": 1.5
+  }
+}

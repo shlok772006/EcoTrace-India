@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Results — EcoTrace India</title>
+  <meta name="description" content="See your carbon footprint results, eco score, India benchmarks comparison, and personalized AI reduction tips.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Confetti canvas (for A+ / A grades) -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Tricolor stripe -->
+  <div class="tricolor-stripe">
+    <span class="saffron"></span>
+    <span class="white"></span>
+    <span class="green"></span>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <a href="/" class="navbar-logo">
+      <span class="leaf">🌱</span>EcoTrace
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+    <ul class="navbar-nav" id="navbar-nav">
+      <li><a href="/">Home</a></li>
+      <li><a href="/calculator">Calculator</a></li>
+      <li><a href="/tracker">Tracker</a></li>
+      <li><a href="/chat">Chat</a></li>
+    </ul>
+  </nav>
+
+  <main class="page-content" id="results-container">
+    <div class="container">
+
+      <!-- Eco Score Badge -->
+      <section class="section" id="eco-score-section">
+        <div class="eco-badge">
+          <div class="eco-badge-circle" id="eco-circle">
+            <span class="eco-badge-grade" id="eco-grade">–</span>
+          </div>
+          <span class="eco-badge-label" id="eco-label">Calculating...</span>
+        </div>
+
+        <!-- Total Footprint -->
+        <div class="footprint-total">
+          <div class="footprint-number" id="footprint-number">0.00</div>
+          <div class="footprint-unit">tonnes CO₂e per year</div>
+        </div>
+      </section>
+
+      <!-- Benchmark Comparison -->
+      <section class="section benchmark-section" id="benchmark-section">
+        <h2 class="section-title">How You Compare</h2>
+        <p class="section-subtitle">Your footprint against India and global benchmarks</p>
+        <div class="benchmark-bar" id="benchmark-bars">
+          <!-- Rendered by JS -->
+        </div>
+      </section>
+
+      <!-- Category Breakdown -->
+      <section class="section breakdown-section" id="breakdown-section">
+        <h2 class="section-title">Breakdown by Category</h2>
+        <p class="section-subtitle">Where your emissions come from</p>
+
+        <!-- Stacked bar -->
+        <div class="stacked-bar" id="stacked-bar">
+          <!-- Rendered by JS -->
+        </div>
+        <div class="breakdown-legend" id="breakdown-legend">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- Chart.js doughnut -->
+        <div class="breakdown-chart-container" style="margin-top: var(--space-xl);">
+          <canvas id="breakdown-chart" aria-label="Carbon footprint breakdown chart"></canvas>
+        </div>
+      </section>
+
+      <!-- AI Insights -->
+      <section class="section" id="insights-section">
+        <h2 class="section-title">🤖 AI-Powered Tips For You</h2>
+        <p class="section-subtitle">Personalized by Gemini based on your actual data</p>
+        <div id="insights-container">
+          <div class="insights-loading">
+            <span class="loading-spinner"></span>
+            <p>EcoBot is analyzing your footprint...</p>
+          </div>
+        </div>
+        <div class="motivational-message" id="motivational-message" style="display: none;"></div>
+      </section>
+
+      <!-- Tree Offset -->
+      <section class="section" id="offset-section">
+        <h2 class="section-title">🌳 To Offset Your Footprint</h2>
+        <p class="section-subtitle">What it would take to neutralize your carbon emissions</p>
+        <div class="offset-grid">
+          <div class="offset-card" id="offset-trees-card">
+            <div class="offset-icon">🌳</div>
+            <div class="offset-number" id="offset-trees">–</div>
+            <div class="offset-label">trees needed<br>(1 tree absorbs 25 kg CO₂/year)</div>
+          </div>
+          <div class="offset-card" id="offset-car-card">
+            <div class="offset-icon">🚗</div>
+            <div class="offset-number" id="offset-car">–</div>
+            <div class="offset-label">fewer car km<br>(equivalent reduction)</div>
+          </div>
+          <div class="offset-card" id="offset-solar-card">
+            <div class="offset-icon">☀️</div>
+            <div class="offset-number" id="offset-solar">–</div>
+            <div class="offset-label">kW of solar panels<br>(to offset annually)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTAs -->
+      <section class="section">
+        <div class="results-ctas">
+          <a href="/action-plan" class="btn-primary" id="btn-action-plan">
+            📅 Generate My 30-Day Plan →
+          </a>
+          <button class="btn-secondary" id="btn-save-tracker">
+            📈 Save to Tracker
+          </button>
+          <a href="/calculator" class="btn-secondary" id="btn-recalculate">
+            🔄 Recalculate
+          </a>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>Built with ❤️ for a greener India | Prompt Wars Virtual 2025</p>
+      <p style="margin-top: 0.5rem;">Powered by Google Gemini API • Deployed on Google Cloud Run</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
