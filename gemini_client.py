@@ -9,7 +9,8 @@ import logging
 import os
 from typing import Any
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 
 logger = logging.getLogger(__name__)
@@ -18,26 +19,40 @@ logger = logging.getLogger(__name__)
 # Gemini initialisation
 # ---------------------------------------------------------------------------
 
-_MODEL = None
+_CLIENT = None
+_MODEL_NAME = "gemini-2.5-flash"
 
 
-def _get_model() -> genai.GenerativeModel:
-    """Lazily initialise and return the Gemini model.
+def _get_client() -> genai.Client:
+    """Lazily initialise and return the Gemini client.
 
     The API key is read from the GEMINI_API_KEY environment variable.
     """
-    global _MODEL
-    if _MODEL is None:
+    global _CLIENT
+    if _CLIENT is None:
         api_key: str | None = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError(
                 "GEMINI_API_KEY environment variable is not set. "
                 "Set it before starting the application."
             )
-        genai.configure(api_key=api_key)
-        _MODEL = genai.GenerativeModel("gemini-1.5-flash")
-        logger.info("Gemini model initialised (gemini-1.5-flash)")
-    return _MODEL
+        _CLIENT = genai.Client(api_key=api_key)
+        logger.info(f"Gemini client initialised (using {_MODEL_NAME})")
+    return _CLIENT
+
+def ping() -> bool:
+    """Ping the Gemini API to check if it's reachable and the API key is valid."""
+    try:
+        client = _get_client()
+        # A simple generation to verify the key and connectivity
+        response = client.models.generate_content(
+            model=_MODEL_NAME,
+            contents="Respond with 'ok'"
+        )
+        return bool(response.text)
+    except Exception as e:
+        logger.error("Gemini API ping failed: %s", e)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +258,7 @@ def get_insights(footprint_data: dict[str, Any], language: str = "English") -> d
     Returns:
         Dict with 'insights' list and 'motivational_message', or an error dict.
     """
-    model = _get_model()
+    client = _get_client()
 
     total = footprint_data["total"]
     breakdown = footprint_data["breakdown"]
@@ -273,8 +288,9 @@ def get_insights(footprint_data: dict[str, Any], language: str = "English") -> d
 
     try:
         logger.info("Requesting Gemini insights for footprint %.2f tonnes", total)
-        response = model.generate_content(
-            [BASE_SYSTEM_PROMPT.format(language=language), prompt]
+        response = client.models.generate_content(
+            model=_MODEL_NAME,
+            contents=[BASE_SYSTEM_PROMPT.format(language=language), prompt]
         )
         parsed = _parse_json_response(response.text)
         if parsed and "insights" in parsed:
@@ -298,7 +314,7 @@ def get_action_plan(footprint_data: dict[str, Any], language: str = "English") -
     Returns:
         Dict with 'estimated_annual_saving_tonnes' and 'weeks' list, or fallback.
     """
-    model = _get_model()
+    client = _get_client()
 
     breakdown = footprint_data["breakdown"]
     # Sort categories by emission value descending
@@ -315,8 +331,9 @@ def get_action_plan(footprint_data: dict[str, Any], language: str = "English") -
 
     try:
         logger.info("Requesting Gemini action plan for footprint %.2f tonnes", footprint_data["total"])
-        response = model.generate_content(
-            [BASE_SYSTEM_PROMPT.format(language=language), prompt]
+        response = client.models.generate_content(
+            model=_MODEL_NAME,
+            contents=[BASE_SYSTEM_PROMPT.format(language=language), prompt]
         )
         parsed = _parse_json_response(response.text)
         if parsed and "weeks" in parsed:
@@ -347,7 +364,7 @@ def get_chat_response(
     Returns:
         Response text from Gemini, or a fallback string.
     """
-    model = _get_model()
+    client = _get_client()
 
     # Build footprint summary for context
     if footprint_data and "total" in footprint_data:
@@ -376,7 +393,10 @@ def get_chat_response(
 
     try:
         logger.info("Requesting Gemini chat response")
-        response = model.generate_content(contents)
+        response = client.models.generate_content(
+            model=_MODEL_NAME,
+            contents=contents
+        )
         logger.info("Gemini chat response generated successfully")
         return response.text.strip()
     except Exception as e:
@@ -401,7 +421,7 @@ def get_progress_message(
     Returns:
         A short motivational message string.
     """
-    model = _get_model()
+    client = _get_client()
 
     change_pct = round(((current_total - prev_total) / prev_total) * 100, 1) if prev_total > 0 else 0
     increase_or_decrease = "decrease" if current_total < prev_total else "increase"
@@ -417,8 +437,9 @@ def get_progress_message(
 
     try:
         logger.info("Requesting Gemini progress message")
-        response = model.generate_content(
-            [BASE_SYSTEM_PROMPT.format(language=language), prompt]
+        response = client.models.generate_content(
+            model=_MODEL_NAME,
+            contents=[BASE_SYSTEM_PROMPT.format(language=language), prompt]
         )
         logger.info("Gemini progress message generated successfully")
         return response.text.strip()

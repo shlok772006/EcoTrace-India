@@ -20,8 +20,9 @@ from calculator import (
     calculate_footprint,
     calculate_tree_offset,
     get_benchmarks,
+    load_emission_factors,
 )
-from gemini_client import get_action_plan, get_chat_response, get_insights
+from gemini_client import get_action_plan, get_chat_response, get_insights, ping
 
 # ---------------------------------------------------------------------------
 # Environment & logging setup
@@ -34,6 +35,10 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.info("Application starting — using standard Python logging")
+
+# Eagerly load emission factors so they are ready before the first request
+load_emission_factors()
+logger.info("Emission factors loaded")
 
 # ---------------------------------------------------------------------------
 # Rate limiting
@@ -271,11 +276,17 @@ def api_chat() -> tuple:
 @app.route("/health", methods=["GET"])
 def health_check() -> tuple:
     """Health check endpoint."""
+    gemini_status = "healthy" if ping() else "unhealthy"
+    status_code = 200 if gemini_status == "healthy" else 503
+    
     return jsonify({
-        "status": "healthy",
-        "services": ["gemini-api", "render"],
+        "status": "healthy" if gemini_status == "healthy" else "degraded",
+        "services": {
+            "gemini-api": gemini_status,
+            "render": "healthy"
+        },
         "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
-    }), 200
+    }), status_code
 
 
 # ---------------------------------------------------------------------------
