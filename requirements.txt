@@ -4,4 +4,3 @@ flask-limiter==3.7.0
 bleach==6.1.0
 python-dotenv==1.0.1
 gunicorn==22.0.0
-pytest==8.1.1

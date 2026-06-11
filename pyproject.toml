@@ -1,0 +1,37 @@
+[project]
+name = "ecotrace-india"
+version = "3.0.0"
+description = "AI-powered carbon footprint awareness platform for India"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Shlok"},
+]
+keywords = [
+    "carbon-footprint",
+    "sustainability",
+    "india",
+    "gemini-ai",
+    "flask",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Flask",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Homepage = "https://github.com/shlok772006/EcoTrace-India"
+Demo = "https://ecotrace-india.onrender.com/"
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+
+[tool.flake8]
+max-line-length = 79
+exclude = ["venv", ".git", "__pycache__"]
+per-file-ignores = ["test_app.py:E501"]

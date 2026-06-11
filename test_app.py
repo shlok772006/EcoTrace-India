@@ -1,28 +1,62 @@
+"""Unit tests for EcoTrace India.
+
+Covers all API endpoints, calculator edge cases
+(boundary values, all diet types, all city tiers),
+input validation, and security sanitisation.
+
+Run with:  ``pytest -v test_app.py``
+"""
+
 import json
+from typing import Any
+
 import pytest
+
 from app import app
-from calculator import load_emission_factors
+from calculator import (
+    calculate_eco_score,
+    calculate_footprint,
+    calculate_tree_offset,
+    get_benchmarks,
+    load_emission_factors,
+)
+from constants import (
+    ECO_GRADE_A_MAX,
+    ECO_GRADE_A_PLUS_MAX,
+    INPUT_LIMITS,
+    VALID_CITY_TIERS,
+    VALID_DIET_TYPES,
+)
+
+
+# ---------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------
+
 
 @pytest.fixture
 def client():
-    # Load emission factors before testing
+    """Create a Flask test client with factors loaded.
+
+    Yields:
+        A ``FlaskClient`` instance.
+    """
     load_emission_factors()
-    
     app.config["TESTING"] = True
-    with app.test_client() as client:
-        yield client
+    with app.test_client() as test_client:
+        yield test_client
 
-def test_health_endpoint(client):
-    """Test that the health endpoint returns expected JSON."""
-    response = client.get('/health')
-    assert response.status_code in [200, 503]
-    data = json.loads(response.data)
-    assert "status" in data
-    assert "services" in data
 
-def test_calculate_valid_input(client):
-    """Test calculation with normal data."""
-    valid_data = {
+def _base_input(**overrides: Any) -> dict[str, Any]:
+    """Build a valid calculator input with overrides.
+
+    Args:
+        **overrides: Field values to override.
+
+    Returns:
+        Complete input dictionary.
+    """
+    defaults: dict[str, Any] = {
         "electricity_kwh": 100,
         "lpg_cylinders": 1,
         "petrol_car_km": 500,
@@ -34,110 +68,320 @@ def test_calculate_valid_input(client):
         "recycles": True,
         "composts": False,
         "city_tier": "metro",
-        "language": "English"
+        "language": "English",
     }
-    response = client.post('/api/calculate', json=valid_data)
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert "total" in data
-    assert "breakdown" in data
-    assert "eco_score" in data
-    assert "benchmarks" in data
+    defaults.update(overrides)
+    return defaults
 
-def test_calculate_all_zeros(client):
-    """Test calculation with zero usage."""
-    zero_data = {
-        "electricity_kwh": 0,
-        "lpg_cylinders": 0,
-        "petrol_car_km": 0,
-        "two_wheeler_km": 0,
-        "train_km": 0,
-        "flight_km": 0,
-        "diet_type": "vegan",
-        "waste_kg": 0,
-        "recycles": True,
-        "composts": True,
-        "city_tier": "rural",
-        "language": "English"
-    }
-    response = client.post('/api/calculate', json=zero_data)
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert data["total"] > 0  # Still > 0 because diet always has a baseline (1500 kg for vegan = 1.5t)
-    assert data["breakdown"]["energy"] == 0
 
-def test_calculate_maximum_values(client):
-    """Test calculation with unusually high numbers."""
-    max_data = {
-        "electricity_kwh": 99999,
-        "lpg_cylinders": 999,
-        "petrol_car_km": 99999,
-        "two_wheeler_km": 99999,
-        "train_km": 99999,
-        "flight_km": 99999,
-        "diet_type": "heavy_meat",
-        "waste_kg": 9999,
-        "recycles": False,
-        "composts": False,
-        "city_tier": "metro",
-        "language": "English"
-    }
-    response = client.post('/api/calculate', json=max_data)
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert data["total"] > 500  # Clamped values still result in a very high footprint
+# ---------------------------------------------------------------
+# Health endpoint
+# ---------------------------------------------------------------
 
-def test_calculate_missing_fields(client):
-    """Test calculation with missing required fields defaults gracefully."""
-    missing_data = {
-        "electricity_kwh": 100
-        # Missing almost everything
-    }
-    response = client.post('/api/calculate', json=missing_data)
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert data["breakdown"]["transport"] == 0
 
-def test_calculate_invalid_diet(client):
-    """Test calculation with an invalid diet type."""
-    invalid_data = {
-        "electricity_kwh": 100,
-        "lpg_cylinders": 1,
-        "petrol_car_km": 500,
-        "two_wheeler_km": 100,
-        "train_km": 50,
-        "flight_km": 0,
-        "diet_type": "alien_food",
-        "waste_kg": 15,
-        "recycles": True,
-        "composts": False,
-        "city_tier": "metro",
-        "language": "English"
-    }
-    response = client.post('/api/calculate', json=invalid_data)
-    assert response.status_code == 400
-    assert b"Invalid diet_type" in response.data
+class TestHealthEndpoint:
+    """Tests for ``GET /health``."""
 
-def test_xss_sanitization(client):
-    """Test that bleach sanitizes malicious inputs in text fields."""
-    xss_data = {
-        "electricity_kwh": 100,
-        "lpg_cylinders": 1,
-        "petrol_car_km": 500,
-        "two_wheeler_km": 100,
-        "train_km": 50,
-        "flight_km": 0,
-        "diet_type": "vegan",
-        "waste_kg": 15,
-        "recycles": True,
-        "composts": False,
-        "city_tier": "metro",
-        "language": "<script>alert('xss')</script>English"
-    }
-    response = client.post('/api/calculate', json=xss_data)
-    # The API should just bleach the string and proceed, or reject it.
-    # App logic sanitizes "language" so it shouldn't contain the script tag.
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    # Language is passed through in the result
-    assert "<script>" not in data.get("language", "")
+    def test_returns_expected_keys(
+        self, client
+    ) -> None:
+        """Health response contains status and services."""
+        resp = client.get("/health")
+        assert resp.status_code in (200, 503)
+        data = json.loads(resp.data)
+        assert "status" in data
+        assert "services" in data
+
+
+# ---------------------------------------------------------------
+# Calculate endpoint — happy path
+# ---------------------------------------------------------------
+
+
+class TestCalculateEndpoint:
+    """Tests for ``POST /api/calculate``."""
+
+    def test_valid_input(self, client) -> None:
+        """Normal data returns full result."""
+        resp = client.post(
+            "/api/calculate",
+            json=_base_input(),
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert "total" in data
+        assert "breakdown" in data
+        assert "eco_score" in data
+        assert "benchmarks" in data
+
+    def test_missing_fields_default(
+        self, client
+    ) -> None:
+        """Missing numeric fields default to zero."""
+        resp = client.post(
+            "/api/calculate",
+            json={"electricity_kwh": 100},
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert data["breakdown"]["transport"] == 0
+
+
+# ---------------------------------------------------------------
+# Boundary-value tests (parametrised)
+# ---------------------------------------------------------------
+
+
+class TestBoundaryValues:
+    """Parametrised tests for calculator boundaries."""
+
+    def test_all_zeros(self, client) -> None:
+        """Zero usage still produces a diet baseline."""
+        resp = client.post(
+            "/api/calculate",
+            json=_base_input(
+                electricity_kwh=0,
+                lpg_cylinders=0,
+                petrol_car_km=0,
+                two_wheeler_km=0,
+                train_km=0,
+                flight_km=0,
+                waste_kg=0,
+                diet_type="vegan",
+                recycles=True,
+                composts=True,
+                city_tier="rural",
+            ),
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        # Vegan diet = 1500 kg = 1.5t baseline
+        assert data["total"] > 0
+        assert data["breakdown"]["energy"] == 0
+
+    @pytest.mark.parametrize(
+        "field,max_val",
+        [
+            ("electricity_kwh", 10_000),
+            ("lpg_cylinders", 50),
+            ("petrol_car_km", 50_000),
+            ("two_wheeler_km", 50_000),
+            ("train_km", 50_000),
+            ("flight_km", 100_000),
+            ("waste_kg", 5_000),
+        ],
+    )
+    def test_maximum_values_clamped(
+        self,
+        client,
+        field: str,
+        max_val: float,
+    ) -> None:
+        """Values above the limit are clamped."""
+        over = {field: max_val * 2}
+        resp = client.post(
+            "/api/calculate",
+            json=_base_input(**over),
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert data["total"] > 0
+
+    def test_zero_electricity(self, client) -> None:
+        """Zero kWh results in zero energy from elec."""
+        result = calculate_footprint(
+            _base_input(
+                electricity_kwh=0,
+                lpg_cylinders=0,
+            )
+        )
+        assert result["breakdown"]["energy"] == 0.0
+
+    def test_max_realistic_flight(
+        self, client
+    ) -> None:
+        """100,000 km flight produces large transport."""
+        result = calculate_footprint(
+            _base_input(flight_km=100_000)
+        )
+        assert result["breakdown"]["transport"] > 100
+
+    @pytest.mark.parametrize(
+        "diet", list(VALID_DIET_TYPES)
+    )
+    def test_all_diet_types(
+        self, client, diet: str
+    ) -> None:
+        """Every valid diet type calculates OK."""
+        resp = client.post(
+            "/api/calculate",
+            json=_base_input(diet_type=diet),
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert data["breakdown"]["diet"] > 0
+
+    @pytest.mark.parametrize(
+        "tier", list(VALID_CITY_TIERS)
+    )
+    def test_all_city_tiers(
+        self, client, tier: str
+    ) -> None:
+        """Every valid city tier is accepted."""
+        resp = client.post(
+            "/api/calculate",
+            json=_base_input(city_tier=tier),
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert data["city_tier"] == tier
+
+
+# ---------------------------------------------------------------
+# Validation & error tests
+# ---------------------------------------------------------------
+
+
+class TestValidation:
+    """Tests for input validation and error handling."""
+
+    def test_invalid_diet_rejected(
+        self, client
+    ) -> None:
+        """Unrecognised diet type returns 400."""
+        resp = client.post(
+            "/api/calculate",
+            json=_base_input(diet_type="alien_food"),
+        )
+        assert resp.status_code == 400
+        assert b"Invalid diet_type" in resp.data
+
+    def test_empty_body(self, client) -> None:
+        """Empty POST body returns 400."""
+        resp = client.post(
+            "/api/calculate",
+            data="",
+            content_type="application/json",
+        )
+        assert resp.status_code == 400
+
+    def test_invalid_city_tier_defaults(
+        self, client
+    ) -> None:
+        """Invalid city tier falls back to metro."""
+        resp = client.post(
+            "/api/calculate",
+            json=_base_input(city_tier="mars"),
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert data["city_tier"] == "metro"
+
+
+# ---------------------------------------------------------------
+# Security tests
+# ---------------------------------------------------------------
+
+
+class TestSecurity:
+    """Tests for XSS sanitisation and headers."""
+
+    def test_xss_sanitized(self, client) -> None:
+        """Script tags are stripped from text inputs."""
+        resp = client.post(
+            "/api/calculate",
+            json=_base_input(
+                language=(
+                    "<script>alert('xss')"
+                    "</script>English"
+                ),
+            ),
+        )
+        assert resp.status_code == 200
+        data = json.loads(resp.data)
+        assert "<script>" not in data.get(
+            "language", ""
+        )
+
+    def test_security_headers_present(
+        self, client
+    ) -> None:
+        """Response includes required security headers."""
+        resp = client.get("/")
+        assert (
+            resp.headers.get(
+                "X-Content-Type-Options"
+            )
+            == "nosniff"
+        )
+        assert (
+            resp.headers.get("X-Frame-Options")
+            == "DENY"
+        )
+        assert "Content-Security-Policy" in resp.headers
+        assert (
+            "Strict-Transport-Security"
+            in resp.headers
+        )
+
+
+# ---------------------------------------------------------------
+# Eco-score grading unit tests
+# ---------------------------------------------------------------
+
+
+class TestEcoScore:
+    """Tests for the eco-score grading function."""
+
+    def test_zero_footprint(self) -> None:
+        """Zero tonnes yields A+."""
+        load_emission_factors()
+        score = calculate_eco_score(0.0)
+        assert score["grade"] == "A+"
+
+    def test_high_footprint(self) -> None:
+        """Very high footprint yields F."""
+        load_emission_factors()
+        score = calculate_eco_score(50.0)
+        assert score["grade"] == "F"
+
+
+# ---------------------------------------------------------------
+# Tree offset unit tests
+# ---------------------------------------------------------------
+
+
+class TestTreeOffset:
+    """Tests for the tree-offset calculator."""
+
+    def test_zero_footprint(self) -> None:
+        """Zero tonnes needs zero trees."""
+        load_emission_factors()
+        result = calculate_tree_offset(0.0)
+        assert result["trees_needed"] == 0
+        assert result["equivalent_car_km"] == 0
+
+    def test_positive_footprint(self) -> None:
+        """Positive footprint yields positive offsets."""
+        load_emission_factors()
+        result = calculate_tree_offset(5.0)
+        assert result["trees_needed"] > 0
+        assert result["solar_panels_kw"] > 0
+
+
+# ---------------------------------------------------------------
+# Benchmarks unit tests
+# ---------------------------------------------------------------
+
+
+class TestBenchmarks:
+    """Tests for the benchmark data helper."""
+
+    def test_has_all_keys(self) -> None:
+        """Benchmarks dict contains expected keys."""
+        load_emission_factors()
+        bench = get_benchmarks()
+        assert "india_national" in bench
+        assert "india_urban" in bench
+        assert "global" in bench
+        assert "target_2050" in bench

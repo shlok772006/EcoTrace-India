@@ -532,7 +532,7 @@ async function fetchInsights(result) {
     renderInsights(data);
   } catch (error) {
     container.innerHTML = `
-      <div class="error-message">
+      <div class="error-message" role="alert">
         Unable to load AI insights. Please refresh the page to try again.
       </div>
     `;

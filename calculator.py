@@ -1,54 +1,124 @@
-"""
-calculator.py — EcoTrace India
+"""Carbon-footprint calculator for EcoTrace India.
+
 Pure calculation logic with India-specific emission factors.
-No Flask dependency — this module is imported by app.py.
+No Flask dependency — this module is imported by ``app.py``.
+
+All formulas follow ``DATA_MODEL.md § CalculationFormulas``.
+Emission factors are loaded at run-time from
+``data/emission_factors.json`` and cached in-process.
 """
 
 import json
+import logging
 import os
 from typing import Any
 
+from constants import (
+    CAR_KM_PER_TONNE_CO2,
+    ECO_GRADES,
+    ECO_GRADE_A_MAX,
+    ECO_GRADE_A_PLUS_MAX,
+    ECO_GRADE_B_MAX,
+    ECO_GRADE_C_MAX,
+    ECO_GRADE_D_MAX,
+    KG_PER_TONNE,
+    MONTHS_PER_YEAR,
+)
+from exceptions import CalculationError
 
-# ---------------------------------------------------------------------------
+__all__ = [
+    "load_emission_factors",
+    "calculate_footprint",
+    "calculate_eco_score",
+    "calculate_tree_offset",
+    "get_benchmarks",
+]
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------
 # Data loading
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
 
 _FACTORS_CACHE: dict[str, Any] | None = None
 
 
 def load_emission_factors() -> dict[str, Any]:
-    """Load emission factors from data/emission_factors.json.
+    """Load emission factors from the JSON data file.
 
-    Values are cached after the first call so the file is read only once.
+    Values are cached after the first call so the file is
+    read only once per process lifetime.
+
+    Returns:
+        A nested dictionary whose top-level keys are
+        ``energy``, ``transport``, ``diet``, ``waste``,
+        ``benchmarks``, and ``offsets``.
+
+    Raises:
+        CalculationError: If the data file cannot be found
+            or contains invalid JSON.
     """
-    global _FACTORS_CACHE
+    global _FACTORS_CACHE  # noqa: PLW0603
     if _FACTORS_CACHE is None:
         factors_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "data", "emission_factors.json"
+            os.path.dirname(os.path.abspath(__file__)),
+            "data",
+            "emission_factors.json",
         )
-        with open(factors_path, "r", encoding="utf-8") as f:
-            _FACTORS_CACHE = json.load(f)
+        try:
+            with open(
+                factors_path, "r", encoding="utf-8"
+            ) as fh:
+                _FACTORS_CACHE = json.load(fh)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise CalculationError(
+                f"Cannot load emission factors: {exc}"
+            ) from exc
     return _FACTORS_CACHE
 
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
 # Carbon footprint calculation
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
 
-def calculate_footprint(user_data: dict[str, Any]) -> dict[str, Any]:
-    """Calculate annual carbon footprint from monthly user inputs.
 
-    All numeric inputs are *monthly* values. They are multiplied by 12 to get
-    annual figures.  Diet factors are already annual in the data file.
+def calculate_footprint(
+    user_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Calculate annual carbon footprint from monthly inputs.
 
-    Returns a dict with:
-        total          – grand total in tonnes CO2e/year
-        breakdown      – dict with energy/transport/diet/waste in tonnes
-        largest_category – name of the highest-emitting category
+    All numeric inputs are **monthly** values.  They are
+    multiplied by 12 to obtain annual figures.  Diet factors
+    in the data file are already annual.
 
-    Formula source: DATA_MODEL.md § CalculationFormulas
+    Args:
+        user_data: Dictionary with keys such as
+            ``electricity_kwh``, ``lpg_cylinders``,
+            ``petrol_car_km``, ``diet_type``, etc.
+
+    Returns:
+        A dictionary containing:
+        - ``total`` — grand total in tonnes CO₂e/year.
+        - ``breakdown`` — dict with ``energy``,
+          ``transport``, ``diet``, ``waste`` (all tonnes).
+        - ``largest_category`` — name of the highest-
+          emitting category.
+
+    Raises:
+        CalculationError: If emission factors have not been
+            loaded or a required key is missing.
     """
-    factors = load_emission_factors()
+    try:
+        factors = load_emission_factors()
+    except CalculationError:
+        raise
+    except Exception as exc:
+        raise CalculationError(
+            f"Unexpected factor-loading error: {exc}"
+        ) from exc
+
+    logger.info("Calculating footprint for user input")
+
     energy_f = factors["energy"]
     transport_f = factors["transport"]
     diet_f = factors["diet"]
@@ -56,104 +126,157 @@ def calculate_footprint(user_data: dict[str, Any]) -> dict[str, Any]:
 
     # --- ENERGY ---
     electricity_annual: float = (
-        float(user_data.get("electricity_kwh", 0)) * 12
+        float(user_data.get("electricity_kwh", 0))
+        * MONTHS_PER_YEAR
         * energy_f["electricity_kwh"]
-    ) / 1000  # kg → tonnes
+    ) / KG_PER_TONNE
 
     lpg_annual: float = (
-        float(user_data.get("lpg_cylinders", 0)) * 12
+        float(user_data.get("lpg_cylinders", 0))
+        * MONTHS_PER_YEAR
         * energy_f["lpg_per_cylinder"]
-    ) / 1000
+    ) / KG_PER_TONNE
 
     energy_total: float = electricity_annual + lpg_annual
 
     # --- TRANSPORT ---
-    transport_total: float = (
-        (float(user_data.get("petrol_car_km", 0)) * transport_f["petrol_car_per_km"] * 12)
-        + (float(user_data.get("two_wheeler_km", 0)) * transport_f["two_wheeler_per_km"] * 12)
-        + (float(user_data.get("train_km", 0)) * transport_f["train_per_km"] * 12)
-        + (float(user_data.get("flight_km", 0)) * transport_f["domestic_flight_per_km"] * 12)
-    ) / 1000
+    car_km = float(user_data.get("petrol_car_km", 0))
+    bike_km = float(user_data.get("two_wheeler_km", 0))
+    train_km = float(user_data.get("train_km", 0))
+    flight_km = float(user_data.get("flight_km", 0))
 
-    # --- DIET ---
-    diet_type: str = user_data.get("diet_type", "vegetarian")
-    diet_total: float = diet_f.get(diet_type, diet_f["vegetarian"]) / 1000  # already annual
+    transport_total: float = (
+        car_km * transport_f["petrol_car_per_km"]
+        + bike_km * transport_f["two_wheeler_per_km"]
+        + train_km * transport_f["train_per_km"]
+        + flight_km * transport_f["domestic_flight_per_km"]
+    ) * MONTHS_PER_YEAR / KG_PER_TONNE
+
+    # --- DIET (already annual in the data file) ---
+    diet_type: str = user_data.get(
+        "diet_type", "vegetarian"
+    )
+    diet_total: float = (
+        diet_f.get(diet_type, diet_f["vegetarian"])
+        / KG_PER_TONNE
+    )
 
     # --- WASTE ---
-    waste_kg_annual: float = float(user_data.get("waste_kg", 0)) * 12
-    waste_total: float = (waste_kg_annual * waste_f["landfill_per_kg"]) / 1000
+    waste_kg_annual: float = (
+        float(user_data.get("waste_kg", 0))
+        * MONTHS_PER_YEAR
+    )
+    waste_total: float = (
+        waste_kg_annual * waste_f["landfill_per_kg"]
+    ) / KG_PER_TONNE
+
     if user_data.get("recycles"):
-        waste_total *= (1 - waste_f["recycled_reduction"])
+        waste_total *= 1 - waste_f["recycled_reduction"]
     if user_data.get("composts"):
-        waste_total *= (1 - waste_f["composting_reduction"])
+        waste_total *= 1 - waste_f["composting_reduction"]
 
-    grand_total: float = energy_total + transport_total + diet_total + waste_total
+    grand_total: float = (
+        energy_total
+        + transport_total
+        + diet_total
+        + waste_total
+    )
 
-    # Determine largest category using an explicit dict
-    # (fixes the locals()-in-lambda issue from DATA_MODEL.md)
-    category_totals = {
+    category_totals: dict[str, float] = {
         "energy": energy_total,
         "transport": transport_total,
         "diet": diet_total,
         "waste": waste_total,
     }
-    largest_category: str = max(category_totals, key=lambda k: category_totals[k])
+    largest_category: str = max(
+        category_totals,
+        key=lambda k: category_totals[k],
+    )
 
     return {
         "total": round(grand_total, 2),
         "breakdown": {
-            "energy": round(energy_total, 2),
-            "transport": round(transport_total, 2),
-            "diet": round(diet_total, 2),
-            "waste": round(waste_total, 2),
+            k: round(v, 2)
+            for k, v in category_totals.items()
         },
         "largest_category": largest_category,
     }
 
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
 # Eco Score
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
 
-def calculate_eco_score(total_tonnes: float) -> dict[str, str]:
-    """Grade the user's footprint relative to India urban average (5.0 t).
 
-    Returns a dict with grade, label, and color.
-    Formula source: DATA_MODEL.md § Eco Score Formula
+def calculate_eco_score(
+    total_tonnes: float,
+) -> dict[str, str]:
+    """Grade the user relative to India urban average.
+
+    Args:
+        total_tonnes: The user's total annual footprint in
+            metric tonnes CO₂e.
+
+    Returns:
+        A dictionary with ``grade``, ``label``, and
+        ``color`` keys.
     """
     factors = load_emission_factors()
-    urban_avg: float = factors["benchmarks"]["india_urban_average"]
-    ratio: float = total_tonnes / urban_avg if urban_avg else 1.0
+    urban_avg: float = factors["benchmarks"][
+        "india_urban_average"
+    ]
+    ratio: float = (
+        total_tonnes / urban_avg if urban_avg else 1.0
+    )
 
-    if ratio <= 0.4:
-        return {"grade": "A+", "label": "Climate Hero 🌟", "color": "#00C853"}
-    elif ratio <= 0.6:
-        return {"grade": "A", "label": "Eco Champion 🌿", "color": "#43A047"}
-    elif ratio <= 0.8:
-        return {"grade": "B", "label": "Green Thinker 🍃", "color": "#7CB342"}
-    elif ratio <= 1.0:
-        return {"grade": "C", "label": "Average Impact 🌍", "color": "#FDD835"}
-    elif ratio <= 1.4:
-        return {"grade": "D", "label": "Above Average ⚠️", "color": "#FB8C00"}
-    else:
-        return {"grade": "F", "label": "High Impact 🔴", "color": "#E53935"}
+    thresholds = [
+        ECO_GRADE_A_PLUS_MAX,
+        ECO_GRADE_A_MAX,
+        ECO_GRADE_B_MAX,
+        ECO_GRADE_C_MAX,
+        ECO_GRADE_D_MAX,
+    ]
+    for threshold, grade_info in zip(
+        thresholds, ECO_GRADES
+    ):
+        if ratio <= threshold:
+            return dict(grade_info)
+
+    # ratio > D_MAX → grade F
+    return dict(ECO_GRADES[-1])
 
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
 # Tree / offset equivalents
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
 
-def calculate_tree_offset(total_tonnes: float) -> dict[str, float | int]:
-    """How many trees / solar panels / car-km to offset the footprint.
 
-    Formula source: DATA_MODEL.md § Tree Offset Formula
+def calculate_tree_offset(
+    total_tonnes: float,
+) -> dict[str, float | int]:
+    """Calculate nature-based offset equivalents.
+
+    Args:
+        total_tonnes: Annual footprint in tonnes CO₂e.
+
+    Returns:
+        Dictionary with ``trees_needed``,
+        ``equivalent_car_km``, and ``solar_panels_kw``.
     """
     factors = load_emission_factors()
     offsets = factors["offsets"]
 
-    trees_needed: float = total_tonnes / offsets["tree_absorption_per_year"]
-    equivalent_car_km: float = total_tonnes * 5848  # km at 171 g/km
-    solar_panels_kw: float = total_tonnes / offsets["solar_panel_saving_per_kw"]
+    trees_needed: float = (
+        total_tonnes
+        / offsets["tree_absorption_per_year"]
+    )
+    equivalent_car_km: float = (
+        total_tonnes * CAR_KM_PER_TONNE_CO2
+    )
+    solar_panels_kw: float = (
+        total_tonnes
+        / offsets["solar_panel_saving_per_kw"]
+    )
 
     return {
         "trees_needed": round(trees_needed),
@@ -162,17 +285,24 @@ def calculate_tree_offset(total_tonnes: float) -> dict[str, float | int]:
     }
 
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
 # Benchmark data helper
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------
+
 
 def get_benchmarks() -> dict[str, float]:
-    """Return benchmark values for the results page comparison."""
+    """Return benchmark values for the results page.
+
+    Returns:
+        Dictionary with ``india_national``,
+        ``india_urban``, ``global``, and
+        ``target_2050`` (all in tonnes CO₂e/year).
+    """
     factors = load_emission_factors()
-    b = factors["benchmarks"]
+    bench = factors["benchmarks"]
     return {
-        "india_national": b["india_national_average"],
-        "india_urban": b["india_urban_average"],
-        "global": b["global_average"],
-        "target_2050": b["global_target_2050"],
+        "india_national": bench["india_national_average"],
+        "india_urban": bench["india_urban_average"],
+        "global": bench["global_average"],
+        "target_2050": bench["global_target_2050"],
     }

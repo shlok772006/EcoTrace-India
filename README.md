@@ -1,4 +1,11 @@
 # EcoTrace India 🌱
+
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white)
+![Gemini AI](https://img.shields.io/badge/Gemini_2.5_Flash-AI_Powered-4285F4?logo=google&logoColor=white)
+![Render](https://img.shields.io/badge/Render-Deployed-46E3B7?logo=render&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 ### AI-Powered Carbon Footprint Awareness Platform for India
 
 > Built for **Prompt Wars Virtual – Challenge 3** | Powered by **Google Gemini API** | Deployed on **Render**
@@ -67,20 +74,53 @@ EcoTrace India addresses this by:
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Client
+        A["🌐 User Browser"]
+    end
+
+    subgraph Render["Render (PaaS)"]
+        B["🐍 Flask App\n(Gunicorn)"]
+        C["📊 calculator.py\n(India Emission Factors)"]
+        D["🤖 gemini_client.py\n(Prompt Management)"]
+        E["📋 Python Logging"]
+    end
+
+    subgraph Google["Google Cloud"]
+        F["✨ Gemini 2.5 Flash API"]
+    end
+
+    A -- "HTTPS" --> B
+    B --> C
+    B --> D
+    D -- "REST API" --> F
+    B --> E
+```
+
+---
+
 ## Project Structure
 
 ```
 EcoTrace-India/
-├── app.py              # Flask backend, all routes and API endpoints
-├── calculator.py       # Pure calculation logic with India emission factors
-├── gemini_client.py    # Gemini API integration and prompt management
-├── requirements.txt    # Python dependencies
-├── Procfile            # Render process definition
-├── Dockerfile          # Container configuration
-├── static/             # CSS and JavaScript
-├── templates/          # HTML pages
-├── data/               # Emission factors JSON
-└── test_app.py         # pytest unit tests
+├── app.py                # Flask backend, all routes and API endpoints
+├── calculator.py         # Pure calculation logic with India emission factors
+├── gemini_client.py      # Gemini API integration and prompt management
+├── config.py             # Centralised configuration (env vars)
+├── constants.py          # Named constants (no magic numbers)
+├── exceptions.py         # Custom exception hierarchy
+├── requirements.txt      # Production dependencies
+├── requirements-dev.txt  # Dev/test dependencies (pytest, flake8)
+├── .flake8               # Linter configuration
+├── Procfile              # Render process definition
+├── Dockerfile            # Container configuration
+├── static/               # CSS and JavaScript
+├── templates/            # HTML pages
+├── data/                 # Emission factors JSON
+└── test_app.py           # 30 pytest unit tests
 ```
 
 ---
@@ -99,6 +139,7 @@ source venv/bin/activate # Mac/Linux
 
 # 3. Install dependencies
 pip install -r requirements.txt
+pip install -r requirements-dev.txt  # for testing
 
 # 4. Set your API key
 cp .env.example .env
@@ -106,6 +147,9 @@ cp .env.example .env
 
 # 5. Run
 flask run
+
+# 6. Run tests
+pytest -v test_app.py
 ```
 
 Visit `http://localhost:5000`
@@ -133,17 +177,6 @@ All Gemini prompts are documented in `PROMPT_STRATEGY.md`. Key principles:
 - India-specific context enforced in system prompt
 - Structured JSON output enforced for frontend parsing
 - Guardrails against political content and fabricated statistics
-
----
-
-## Architecture
-
-```
-User Browser → Flask on Render → Gemini 2.5 Flash API
-                     ↓
-              calculator.py (India emission factors)
-              gemini_client.py (prompt management)
-```
 
 ---
 
