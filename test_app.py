@@ -385,3 +385,97 @@ class TestBenchmarks:
         assert "india_urban" in bench
         assert "global" in bench
         assert "target_2050" in bench
+
+
+# ---------------------------------------------------------------
+# Chat endpoint tests
+# ---------------------------------------------------------------
+
+
+class TestChatEndpoint:
+    """Tests for ``POST /api/chat``."""
+
+    def test_missing_message(self, client) -> None:
+        """Empty body returns 400."""
+        resp = client.post(
+            "/api/chat",
+            json={},
+        )
+        assert resp.status_code == 400
+        data = json.loads(resp.data)
+        assert "error" in data
+
+    def test_message_too_long(self, client) -> None:
+        """Oversized message returns 400."""
+        resp = client.post(
+            "/api/chat",
+            json={"message": "x" * 1001},
+        )
+        assert resp.status_code == 400
+        data = json.loads(resp.data)
+        assert "1000" in data["error"]
+
+    def test_empty_message_rejected(
+        self, client
+    ) -> None:
+        """Empty string message returns 400."""
+        resp = client.post(
+            "/api/chat",
+            json={"message": ""},
+        )
+        assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------
+# Action-plan endpoint tests
+# ---------------------------------------------------------------
+
+
+class TestActionPlanEndpoint:
+    """Tests for ``POST /api/action-plan``."""
+
+    def test_missing_data(self, client) -> None:
+        """Empty body returns 400."""
+        resp = client.post(
+            "/api/action-plan",
+            json={},
+        )
+        assert resp.status_code == 400
+        data = json.loads(resp.data)
+        assert "error" in data
+
+    def test_missing_total(self, client) -> None:
+        """Body without 'total' key returns 400."""
+        resp = client.post(
+            "/api/action-plan",
+            json={"breakdown": {}},
+        )
+        assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------
+# Insights endpoint tests
+# ---------------------------------------------------------------
+
+
+class TestInsightsEndpoint:
+    """Tests for ``POST /api/insights``."""
+
+    def test_missing_data(self, client) -> None:
+        """Empty body returns 400."""
+        resp = client.post(
+            "/api/insights",
+            json={},
+        )
+        assert resp.status_code == 400
+        data = json.loads(resp.data)
+        assert "error" in data
+
+    def test_missing_total(self, client) -> None:
+        """Body without 'total' key returns 400."""
+        resp = client.post(
+            "/api/insights",
+            json={"breakdown": {}},
+        )
+        assert resp.status_code == 400
+

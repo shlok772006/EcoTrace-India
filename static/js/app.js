@@ -1023,6 +1023,45 @@ function renderTrackerTable(history) {
 }
 
 // ============================================================
+// Save to Tracker
+// ============================================================
+
+/** Save current footprint result to the monthly tracker history */
+function saveToTracker() {
+  const stored = localStorage.getItem('ecotrace_result');
+  if (!stored) {
+    showToast('❌ No footprint data to save. Calculate first!');
+    return;
+  }
+
+  const result = JSON.parse(stored);
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const history = JSON.parse(localStorage.getItem('ecotrace_history') || '[]');
+
+  // Check if this month already exists and update it
+  const existingIdx = history.findIndex(entry => entry.month === monthKey);
+  const entry = {
+    month: monthKey,
+    total: result.total,
+    breakdown: result.breakdown,
+    eco_score: result.eco_score,
+    saved_at: now.toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    history[existingIdx] = entry;
+    showToast('✅ Tracker updated for ' + monthKey + '!');
+  } else {
+    history.push(entry);
+    showToast('✅ Saved to tracker for ' + monthKey + '!');
+  }
+
+  localStorage.setItem('ecotrace_history', JSON.stringify(history));
+}
+
+// ============================================================
 // Page initialization
 // ============================================================
 

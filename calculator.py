@@ -11,6 +11,7 @@ Emission factors are loaded at run-time from
 import json
 import logging
 import os
+import threading
 from typing import Any
 
 from constants import (
@@ -41,13 +42,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------
 
 _FACTORS_CACHE: dict[str, Any] | None = None
+_FACTORS_LOCK = threading.Lock()
 
 
 def load_emission_factors() -> dict[str, Any]:
     """Load emission factors from the JSON data file.
 
     Values are cached after the first call so the file is
-    read only once per process lifetime.
+    read only once per process lifetime.  Access is
+    thread-safe (double-checked locking).
 
     Returns:
         A nested dictionary whose top-level keys are
@@ -60,20 +63,30 @@ def load_emission_factors() -> dict[str, Any]:
     """
     global _FACTORS_CACHE  # noqa: PLW0603
     if _FACTORS_CACHE is None:
-        factors_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "data",
-            "emission_factors.json",
-        )
-        try:
-            with open(
-                factors_path, "r", encoding="utf-8"
-            ) as fh:
-                _FACTORS_CACHE = json.load(fh)
-        except (OSError, json.JSONDecodeError) as exc:
-            raise CalculationError(
-                f"Cannot load emission factors: {exc}"
-            ) from exc
+        with _FACTORS_LOCK:
+            if _FACTORS_CACHE is None:
+                factors_path = os.path.join(
+                    os.path.dirname(
+                        os.path.abspath(__file__)
+                    ),
+                    "data",
+                    "emission_factors.json",
+                )
+                try:
+                    with open(
+                        factors_path,
+                        "r",
+                        encoding="utf-8",
+                    ) as fh:
+                        _FACTORS_CACHE = json.load(fh)
+                except (
+                    OSError,
+                    json.JSONDecodeError,
+                ) as exc:
+                    raise CalculationError(
+                        "Cannot load emission "
+                        f"factors: {exc}"
+                    ) from exc
     return _FACTORS_CACHE
 
 

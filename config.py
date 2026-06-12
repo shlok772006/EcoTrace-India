@@ -5,12 +5,12 @@ configuration so that ``app.py`` never calls
 ``os.environ`` directly.
 """
 
-__all__ = ["Config"]
-
 import os
 from typing import Final
 
 from dotenv import load_dotenv
+
+__all__ = ["Config"]
 
 # Load .env for local development (no-op in production)
 load_dotenv()

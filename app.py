@@ -219,6 +219,27 @@ def _validate_calculate_input(
 
 
 # ---------------------------------------------------------------
+# Error-response helper (DRY)
+# ---------------------------------------------------------------
+
+
+def _error_response(
+    msg: str,
+    status: int = 500,
+) -> tuple[Response, int]:
+    """Build a standard JSON error response.
+
+    Args:
+        msg: User-facing error message.
+        status: HTTP status code.
+
+    Returns:
+        A two-tuple ``(json_response, status_code)``.
+    """
+    return jsonify({"error": msg}), status
+
+
+# ---------------------------------------------------------------
 # Page routes
 # ---------------------------------------------------------------
 
@@ -331,35 +352,12 @@ def api_calculate() -> tuple[Response, int]:
         )
         return jsonify(result), 200
 
-    except CalculationError as exc:
+    except Exception as exc:
         logger.error(
             "Calculation error: %s", exc, exc_info=True
         )
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "Calculation failed. "
-                        "Please try again."
-                    )
-                }
-            ),
-            500,
-        )
-    except Exception as exc:
-        logger.error(
-            "Unexpected error: %s", exc, exc_info=True
-        )
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "Calculation failed. "
-                        "Please try again."
-                    )
-                }
-            ),
-            500,
+        return _error_response(
+            "Calculation failed. Please try again."
         )
 
 
@@ -402,35 +400,13 @@ def api_insights() -> tuple[Response, int]:
             data["total"],
         )
         return jsonify(insights), 200
-    except GeminiAPIError as exc:
-        logger.error(
-            "Insights error: %s", exc, exc_info=True
-        )
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "Failed to generate insights. "
-                        "Please try again."
-                    )
-                }
-            ),
-            500,
-        )
     except Exception as exc:
         logger.error(
             "Insights error: %s", exc, exc_info=True
         )
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "Failed to generate insights. "
-                        "Please try again."
-                    )
-                }
-            ),
-            500,
+        return _error_response(
+            "Failed to generate insights. "
+            "Please try again."
         )
 
 
@@ -472,39 +448,15 @@ def api_action_plan() -> tuple[Response, int]:
             data["total"],
         )
         return jsonify(plan), 200
-    except GeminiAPIError as exc:
-        logger.error(
-            "Action plan error: %s",
-            exc,
-            exc_info=True,
-        )
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "Failed to generate action "
-                        "plan. Please try again."
-                    )
-                }
-            ),
-            500,
-        )
     except Exception as exc:
         logger.error(
             "Action plan error: %s",
             exc,
             exc_info=True,
         )
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "Failed to generate action "
-                        "plan. Please try again."
-                    )
-                }
-            ),
-            500,
+        return _error_response(
+            "Failed to generate action plan. "
+            "Please try again."
         )
 
 
@@ -567,35 +519,13 @@ def api_chat() -> tuple[Response, int]:
             jsonify({"response": response_text}),
             200,
         )
-    except GeminiAPIError as exc:
-        logger.error(
-            "Chat error: %s", exc, exc_info=True
-        )
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "Failed to get response. "
-                        "Please try again."
-                    )
-                }
-            ),
-            500,
-        )
     except Exception as exc:
         logger.error(
             "Chat error: %s", exc, exc_info=True
         )
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "Failed to get response. "
-                        "Please try again."
-                    )
-                }
-            ),
-            500,
+        return _error_response(
+            "Failed to get response. "
+            "Please try again."
         )
 
 
